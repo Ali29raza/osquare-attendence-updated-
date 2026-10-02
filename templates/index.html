@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aptech to Osquare Attendance Converter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="dark-theme">
+    <div class="app-wrapper">
+        <!-- Top Navbar -->
+        <header class="navbar">
+            <div class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-file-csv"></i>
+                </div>
+                <div>
+                    <h1 class="brand-title">Aptech &rarr; Osquare Attendance Converter</h1>
+                    <p class="brand-subtitle">Export Osquare-ready <code>attendanceImport.csv</code> with 1-click batch &amp; student filtering</p>
+                </div>
+            </div>
+            <div class="nav-stats">
+                <div class="stat-pill" id="statBatches">
+                    <span class="stat-icon"><i class="fa-solid fa-layer-group"></i></span>
+                    <span class="stat-label">Batches:</span>
+                    <span class="stat-val" id="totalBatchesCount">--</span>
+                </div>
+                <div class="stat-pill" id="statStudents">
+                    <span class="stat-icon"><i class="fa-solid fa-users"></i></span>
+                    <span class="stat-label">Students:</span>
+                    <span class="stat-val" id="totalStudentsCount">--</span>
+                </div>
+                <button class="btn btn-outline btn-sm" id="btnUploadModal">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Update Report
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-container">
+            <!-- Left Controls Column -->
+            <div class="workflow-column">
+                <!-- Step 1: Batch Selection -->
+                <section class="card workflow-card">
+                    <div class="card-header">
+                        <div class="step-badge">1</div>
+                        <div class="card-title-group">
+                            <h2 class="card-title">Select Batch</h2>
+                            <p class="card-desc">Choose the class batch to extract attendance from</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-box mb-3">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="batchSearchInput" class="form-input" placeholder="Search batch name (e.g. AI-2024, OV-7144)...">
+                            <button id="clearBatchSearch" class="btn-clear hidden">&times;</button>
+                        </div>
+                        <div class="batch-select-wrapper">
+                            <select id="batchSelect" class="form-select" size="8">
+                                <option value="" disabled selected>Loading batches...</option>
+                            </select>
+                        </div>
+                        <div class="batch-meta-info mt-2" id="selectedBatchMeta" style="display: none;">
+                            <span class="meta-item"><i class="fa-solid fa-graduation-cap"></i> <span id="metaCourseCode">--</span></span>
+                            <span class="meta-item"><i class="fa-solid fa-calendar-days"></i> <span id="metaDateCount">--</span> Dates</span>
+                            <span class="meta-item"><i class="fa-solid fa-user-group"></i> <span id="metaStudentCount">--</span> Students</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Step 2: Student Selection -->
+                <section class="card workflow-card" id="studentSection">
+                    <div class="card-header">
+                        <div class="step-badge">2</div>
+                        <div class="card-title-group">
+                            <h2 class="card-title">Select Students</h2>
+                            <p class="card-desc">Select specific students or export all in batch</p>
+                        </div>
+                        <div class="header-actions">
+                            <span class="badge badge-accent" id="selectedCountBadge">0 Selected</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="student-toolbar">
+                            <div class="search-box flex-1">
+                                <i class="fa-solid fa-filter search-icon"></i>
+                                <input type="text" id="studentSearchInput" class="form-input form-input-sm" placeholder="Filter by Name or Student ID...">
+                            </div>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-secondary btn-sm" id="btnSelectAllStudents">Select All</button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="btnDeselectAllStudents">Deselect</button>
+                            </div>
+                        </div>
+
+                        <div class="student-list-container" id="studentListContainer">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-hand-pointer"></i>
+                                <p>Please select a batch first</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Step 3: Options -->
+                <section class="card workflow-card" id="optionsSection">
+                    <div class="card-header">
+                        <div class="step-badge">3</div>
+                        <div class="card-title-group">
+                            <h2 class="card-title">Download & Format Options</h2>
+                            <p class="card-desc">Choose Student ID format and deduplication rules</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="id-format-section mb-3">
+                            <label class="section-subheading"><i class="fa-solid fa-id-badge"></i> Student ID Format</label>
+                            <div class="id-format-grid" id="idFormatGrid">
+                                <label class="id-format-card active">
+                                    <input type="radio" name="idFormat" value="Student" checked>
+                                    <div class="format-card-content">
+                                        <div class="format-title-row">
+                                            <span class="format-pill">Option 1</span>
+                                            <code class="format-example">Student1730705</code>
+                                        </div>
+                                        <div class="format-desc">Prefix with <code>Student</code></div>
+                                    </div>
+                                </label>
+
+                                <label class="id-format-card">
+                                    <input type="radio" name="idFormat" value="numeric">
+                                    <div class="format-card-content">
+                                        <div class="format-title-row">
+                                            <span class="format-pill">Option 2</span>
+                                            <code class="format-example">1730705</code>
+                                        </div>
+                                        <div class="format-desc">Numeric ID only (no prefix)</div>
+                                    </div>
+                                </label>
+
+                                <label class="id-format-card">
+                                    <input type="radio" name="idFormat" value="ID">
+                                    <div class="format-card-content">
+                                        <div class="format-title-row">
+                                            <span class="format-pill">Option 3</span>
+                                            <code class="format-example">ID1730705</code>
+                                        </div>
+                                        <div class="format-desc">Prefix with <code>ID</code></div>
+                                    </div>
+                                </label>
+
+                                <label class="id-format-card" id="cardCustomPrefix">
+                                    <input type="radio" name="idFormat" value="custom">
+                                    <div class="format-card-content">
+                                        <div class="format-title-row">
+                                            <span class="format-pill">Option 4</span>
+                                            <span class="format-title-label">Custom Prefix</span>
+                                            <code class="format-example" id="customExampleCode">STD1730705</code>
+                                        </div>
+                                        <div class="custom-prefix-input-wrap">
+                                            <input type="text" id="customPrefixInput" class="form-input form-input-sm custom-prefix-input" placeholder="e.g. STD, AP-, STU-" value="STD">
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="options-grid">
+                            <label class="toggle-control">
+                                <input type="checkbox" id="chkDeduplicate" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">
+                                    <strong>Deduplicate Dates</strong>
+                                    <small>1 entry per student per day (Standard for Osquare)</small>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Preview & Export Column -->
+            <div class="preview-column">
+                <div class="card preview-card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <h2 class="card-title"><i class="fa-solid fa-table"></i> Live Output Preview</h2>
+                            <p class="card-desc">Matches exact <code>attendanceImport.csv</code> format (<span id="previewRecordCount">0</span> records)</p>
+                        </div>
+                        <div class="preview-actions">
+                            <button class="btn btn-secondary btn-sm" id="btnCopyCsv">
+                                <i class="fa-solid fa-copy"></i> Copy CSV
+                            </button>
+                            <button class="btn btn-primary" id="btnDownloadCsv" disabled>
+                                <i class="fa-solid fa-file-arrow-down"></i> Download attendanceImport.csv
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body p-0">
+                        <div class="preview-sub-header">
+                            <div class="preview-tabs">
+                                <button class="tab-btn active" data-tab="tableTab"><i class="fa-solid fa-table-cells"></i> Data Grid</button>
+                                <button class="tab-btn" data-tab="rawTab"><i class="fa-solid fa-code"></i> Raw CSV Format</button>
+                            </div>
+                            <div class="preview-date-search-wrapper">
+                                <div class="search-box preview-search-box">
+                                    <i class="fa-solid fa-calendar-day search-icon"></i>
+                                    <input type="text" id="previewDateSearchInput" class="form-input form-input-sm" placeholder="Search by date (e.g. 12/20/2024, 07/01, 2026)...">
+                                    <button id="clearDateSearch" class="btn-clear hidden" title="Clear date filter">&times;</button>
+                                </div>
+                                <div class="date-filter-status" id="dateFilterStatus" style="display: none;">
+                                    <span class="badge badge-accent" id="dateFilterBadge">
+                                        <i class="fa-solid fa-filter"></i> Date Filter Active
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 1: Table -->
+                        <div class="tab-content active" id="tableTab">
+                            <div class="table-wrapper">
+                                <table class="data-table" id="previewTable">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Student ID</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="previewTableBody">
+                                        <tr>
+                                            <td colspan="4" class="text-center py-5 text-muted">
+                                                <i class="fa-solid fa-arrow-left fa-2x mb-2 d-block"></i>
+                                                Select a batch and student(s) on the left to preview attendance
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Raw CSV -->
+                        <div class="tab-content" id="rawTab">
+                            <pre class="raw-csv-code" id="rawCsvCode">Student ID,Date,Status&#10;1363347,12/20/2024,P</pre>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <div class="target-format-badge">
+                            <i class="fa-solid fa-circle-check text-success"></i>
+                            <span>Strict Output Template: <strong>Student ID,Date,Status</strong> (Dates formatted as <strong>MM/DD/YYYY</strong>)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Upload Modal -->
+        <div class="modal-overlay hidden" id="uploadModal">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3 class="modal-title"><i class="fa-solid fa-file-excel text-success"></i> Update Attendance Report</h3>
+                    <button class="btn-close" id="btnCloseUploadModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Upload an updated <code>StudentAttendanceReport.xlsx</code> file. The app will immediately re-index all batches and students.</p>
+                    <div class="drop-zone" id="dropZone">
+                        <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+                        <p class="drop-text">Drag and drop your <strong>.xlsx</strong> file here, or <span class="text-accent">browse</span></p>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls" class="hidden">
+                    </div>
+                    <div id="uploadProgress" class="upload-progress hidden mt-3">
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" id="progressBarFill"></div>
+                        </div>
+                        <p class="progress-text mt-1" id="progressText">Uploading and indexing...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
